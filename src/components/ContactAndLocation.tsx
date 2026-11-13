@@ -18,7 +18,7 @@ export const ContactAndLocation: React.FC = () => {
   const furniture = BUSINESS_CONFIG.furnitureDivision;
 
   const handleShareAddress = () => {
-    const text = `Jagannath Musical & Furniture\nAddress: ${BUSINESS_CONFIG.address.en}\nContact Santosh Sharma (Musical): +91 8787219674 / +91 9935315824\nContact Sanjay Sharma (Furniture): +91 88400 57772\nZamania, Ghazipur, UP`;
+    const text = `Jagannath Musical & Furniture\nAddress: ${BUSINESS_CONFIG.address.en}\nContact Santosh Sharma (Musical): +91 8787219674 / +91 9935315824\nContact Furniture Wing:\n• Sanjay Sharma (WA): +91 8726517121\n• Saheb Sharma (Call/WA): +91 9935509076\nZamania, Ghazipur, UP`;
     if (navigator.share) {
       navigator.share({
         title: 'Jagannath Musical & Furniture',
@@ -174,14 +174,14 @@ export const ContactAndLocation: React.FC = () => {
             </div>
 
             {/* Division B: Furniture Wing Contact Quick Card */}
-            <div className="bg-rosewood-950 text-cream-100 rounded-2xl border border-brass-500/40 p-5 shadow-royal space-y-3">
+            <div className="bg-rosewood-950 text-cream-100 rounded-2xl border border-brass-500/40 p-5 shadow-royal space-y-3.5">
               <div className="flex items-center justify-between border-b border-rosewood-800 pb-2">
                 <div>
                   <span className="text-[10px] font-bold text-brass-400 uppercase tracking-wider block">
                     {t('furnitureProprietorLabel')}
                   </span>
                   <h4 className="font-serif text-sm font-bold text-white">
-                    {furniture.sanchalakShort[language]}
+                    {furniture.proprietor1.name[language]} • {furniture.proprietor2.name[language]}
                   </h4>
                 </div>
                 <span className="px-2 py-0.5 rounded bg-rosewood-800 text-brass-300 text-[10px] font-bold uppercase">
@@ -189,29 +189,51 @@ export const ContactAndLocation: React.FC = () => {
                 </span>
               </div>
 
-              <div className="flex items-center justify-between">
+              {/* Sanjay Sharma */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-rosewood-900/60 border border-rosewood-800">
                 <div>
-                  <span className="font-serif text-base font-bold text-brass-300 block">
-                    {furniture.phone}
+                  <span className="text-[10px] text-brass-400 font-bold block">
+                    {furniture.proprietor1.name[language]} (WhatsApp)
                   </span>
-                  <span className="text-[10px] text-cream-300/70">
-                    {language === 'hi' ? 'कस्टम फर्नीचर ऑर्डर व पूछताछ' : 'Custom Woodwork & Orders'}
+                  <span className="font-serif text-sm font-bold text-white block">
+                    {furniture.proprietor1.whatsApp}
+                  </span>
+                </div>
+                <a
+                  href={createWhatsAppUrl(furniture.proprietor1.whatsAppRaw, "नमस्ते संजय जी, मुझे फर्नीचर के संबंध में जानकारी चाहिए।")}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs"
+                  title="WhatsApp Sanjay Ji"
+                >
+                  <MessageCircle className="w-3.5 h-3.5 fill-white" />
+                </a>
+              </div>
+
+              {/* Saheb Sharma */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-rosewood-900/60 border border-rosewood-800">
+                <div>
+                  <span className="text-[10px] text-brass-400 font-bold block">
+                    {furniture.proprietor2.name[language]} (Call & WhatsApp)
+                  </span>
+                  <span className="font-serif text-sm font-bold text-white block">
+                    {furniture.proprietor2.phone}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <a
-                    href={`tel:${furniture.phoneRaw}`}
+                    href={`tel:${furniture.proprietor2.phoneRaw}`}
                     className="p-2 rounded-lg bg-rosewood-800 hover:bg-rosewood-700 text-brass-300 border border-rosewood-700 shadow-xs"
-                    title="Call Sanjay Ji"
+                    title="Call Saheb Ji"
                   >
                     <Phone className="w-3.5 h-3.5" />
                   </a>
                   <a
-                    href={createWhatsAppUrl(furniture.whatsApp, "नमस्ते संजय जी, मुझे फर्नीचर के संबंध में जानकारी चाहिए।")}
+                    href={createWhatsAppUrl(furniture.proprietor2.whatsAppRaw, "नमस्ते साहेब जी, मुझे फर्नीचर के संबंध में जानकारी चाहिए।")}
                     target="_blank"
                     rel="noreferrer"
                     className="p-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs"
-                    title="WhatsApp Sanjay Ji"
+                    title="WhatsApp Saheb Ji"
                   >
                     <MessageCircle className="w-3.5 h-3.5 fill-white" />
                   </a>

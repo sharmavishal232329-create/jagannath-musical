@@ -502,20 +502,27 @@ export const BUSINESS_CONFIG = {
     phone2Raw: "9935315824"
   },
   furnitureDivision: {
-    sanchalak: {
-      en: "Shree Sanjay Sharma (Younger brother of Shree Santosh Kumar Sharma)",
-      hi: "श्री संजय शर्मा (श्री संतोष कुमार शर्मा जी के छोटे भाई)"
+    proprietor1: {
+      name: {
+        en: "Shree Sanjay Sharma",
+        hi: "श्री संजय शर्मा"
+      },
+      whatsApp: "+91 8726517121",
+      whatsAppRaw: "8726517121"
     },
-    sanchalakShort: {
-      en: "Shree Sanjay Sharma",
-      hi: "श्री संजय शर्मा"
+    proprietor2: {
+      name: {
+        en: "Shree Saheb Sharma",
+        hi: "श्री साहेब शर्मा"
+      },
+      phone: "+91 9935509076",
+      phoneRaw: "9935509076",
+      whatsApp: "+91 9935509076",
+      whatsAppRaw: "9935509076"
     },
-    phone: "+91 88400 57772",
-    phoneRaw: "8840057772",
-    whatsApp: "918840057772",
     description: {
-      en: "Continuing our family's fine woodworking heritage, our furniture division is independently managed by Shree Sanjay Sharma (younger brother of Shree Santosh Kumar Sharma). For custom wooden furniture orders and inquiries, please contact directly:",
-      hi: "हमारी पारिवारिक काष्ठ कला की विरासत को आगे बढ़ाते हुए फर्नीचर का कारोबार श्री संतोष कुमार शर्मा जी के छोटे भाई श्री संजय शर्मा जी द्वारा संचालित किया जाता है। फर्नीचर से संबंधित किसी भी जानकारी या ऑर्डर के लिए सीधे संपर्क करें:"
+      en: "Continuing our family's fine woodworking heritage, our furniture division is independently managed by Shree Sanjay Sharma and Shree Saheb Sharma. For custom wooden furniture orders and inquiries, please contact directly:",
+      hi: "हमारी पारिवारिक काष्ठ कला की विरासत को आगे बढ़ाते हुए फर्नीचर का कारोबार श्री संजय शर्मा एवं श्री साहेब शर्मा जी द्वारा संचालित किया जाता है। फर्नीचर से संबंधित किसी भी जानकारी या कस्टम ऑर्डर के लिए सीधे संपर्क करें:"
     }
   },
   mapEmbedUrl: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14421.32832560833!2d83.56708765!3d25.4300305!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x398e29a997efea97%3A0xc3fcecaeef824c9c!2sZamania%20Kasba%2C%20Zamania%2C%20Uttar%20Pradesh%20232329!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"

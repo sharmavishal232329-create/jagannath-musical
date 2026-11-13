@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
-import { useData } from '../context/DataContext';
+import { useData, type SaveResult } from '../context/DataContext';
 import type { InstrumentItem, RepairService, RepairCategory, InstrumentCategory } from '../types';
-import { formatCurrency, fileToBase64 } from '../utils/helpers';
+import { formatCurrency, fileToBase64, compressAndConvertImage, getBase64SizeKb } from '../utils/helpers';
 import { 
   X, 
   Plus, 
@@ -36,6 +36,8 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ isOpen, onClose 
     repairServices,
     generations,
     generationImages,
+    cloudStatus,
+    syncWithCloud,
     logoutOwner,
     addInstrument,
     updateInstrument,
@@ -82,9 +84,20 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ isOpen, onClose 
             <div>
               <h2 className="font-serif text-lg sm:text-xl font-bold text-white flex items-center gap-2">
                 <span>{language === 'hi' ? 'दुकानदार नियंत्रण कक्ष' : 'Owner Admin Dashboard'}</span>
-                <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-800 text-emerald-200 font-sans font-semibold">
-                  LIVE
-                </span>
+                {cloudStatus === 'connected' ? (
+                  <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-800 text-emerald-200 font-sans font-semibold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>{language === 'hi' ? 'सुपाबेस क्लाउड लाइव' : 'CLOUD LIVE'}</span>
+                  </span>
+                ) : cloudStatus === 'syncing' ? (
+                  <span className="px-2 py-0.5 rounded text-[10px] bg-amber-800 text-amber-200 font-sans font-semibold animate-pulse">
+                    SYNCING...
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded text-[10px] bg-zinc-800 text-zinc-300 font-sans font-semibold">
+                    LOCAL / READY
+                  </span>
+                )}
               </h2>
               <p className="text-xs text-brass-400">
                 {language === 'hi' ? 'श्री संतोष कुमार शर्मा • जगन्नाथ म्यूजिकल' : 'Shree Santosh Kumar Sharma • Jagannath Musical'}
@@ -206,6 +219,8 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ isOpen, onClose 
               onUpdatePin={updateOwnerPin}
               onResetAll={resetAllToDefault}
               onNotify={showToast}
+              cloudStatus={cloudStatus}
+              onSyncWithCloud={syncWithCloud}
             />
           )}
         </div>
@@ -213,9 +228,13 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ isOpen, onClose 
         {/* Dashboard Bottom Status Bar */}
         <div className="px-6 py-2.5 bg-cream-100 border-t border-brass-200 flex items-center justify-between text-xs text-charcoal-muted">
           <span>
-            {language === 'hi'
-              ? 'बदलाव तुरंत आपकी वेबसाइट पर लाइव लागू हो जाते हैं।'
-              : 'All updates are saved locally and reflect on the live website immediately.'}
+            {cloudStatus === 'connected'
+              ? (language === 'hi'
+                  ? '✓ सुपाबेस क्लाउड से जुड़ा हुआ है — बदलाव तुरंत सभी ग्राहकों के मोबाइल पर लाइव दिखेंगे।'
+                  : '✓ Supabase Cloud connected — updates reflect live across all customer devices.')
+              : (language === 'hi'
+                  ? 'बदलाव तुरंत आपकी वेबसाइट पर लाइव लागू हो जाते हैं (स्थायी स्टोरेज सक्रिय)।'
+                  : 'All updates are saved locally and reflect on the website immediately.')}
           </span>
           <button
             onClick={onClose}
@@ -236,9 +255,9 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({ isOpen, onClose 
    ==================================================================== */
 interface InstrumentsManagerProps {
   instruments: InstrumentItem[];
-  onAdd: (item: Omit<InstrumentItem, 'id'>) => void;
-  onUpdate: (id: string, updated: Partial<InstrumentItem>) => void;
-  onDelete: (id: string) => void;
+  onAdd: (item: Omit<InstrumentItem, 'id'>) => Promise<SaveResult> | SaveResult;
+  onUpdate: (id: string, updated: Partial<InstrumentItem>) => Promise<SaveResult> | SaveResult;
+  onDelete: (id: string) => Promise<SaveResult> | SaveResult;
   onNotify: (msg: string) => void;
 }
 
@@ -263,28 +282,37 @@ const InstrumentsManager: React.FC<InstrumentsManagerProps> = ({
   const [specHi, setSpecHi] = useState('');
   const [image, setImage] = useState('');
   const [imageFileName, setImageFileName] = useState('');
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [imageSizeKb, setImageSizeKb] = useState<number | null>(null);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setImageFileName(file.name);
+      setIsCompressing(true);
       try {
-        const base64 = await fileToBase64(file);
-        setImage(base64);
+        const compressed = await compressAndConvertImage(file, 600, 0.7);
+        setImage(compressed);
+        setImageSizeKb(getBase64SizeKb(compressed));
       } catch (err) {
-        console.error("Failed to read image", err);
+        console.error("Compression failed, using fallback:", err);
+        const raw = await fileToBase64(file);
+        setImage(raw);
+        setImageSizeKb(getBase64SizeKb(raw));
+      } finally {
+        setIsCompressing(false);
       }
     }
   };
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nameEn.trim() && !nameHi.trim()) {
       alert("Please provide at least an English or Hindi name.");
       return;
     }
 
-    onAdd({
+    const res = await onAdd({
       name: {
         en: nameEn.trim() || nameHi.trim(),
         hi: nameHi.trim() || nameEn.trim(),
@@ -299,14 +327,19 @@ const InstrumentsManager: React.FC<InstrumentsManagerProps> = ({
       }
     });
 
-    setNameEn('');
-    setNameHi('');
-    setSpecEn('');
-    setSpecHi('');
-    setImage('');
-    setImageFileName('');
-    setShowAddForm(false);
-    onNotify(language === 'hi' ? 'नया वाद्य यंत्र सफलतापूर्वक जोड़ा गया!' : 'New instrument added to stock!');
+    if (res.success) {
+      setNameEn('');
+      setNameHi('');
+      setSpecEn('');
+      setSpecHi('');
+      setImage('');
+      setImageFileName('');
+      setImageSizeKb(null);
+      setShowAddForm(false);
+      onNotify(res.message);
+    } else {
+      alert(res.message);
+    }
   };
 
   return (
@@ -450,15 +483,28 @@ const InstrumentsManager: React.FC<InstrumentsManagerProps> = ({
               <input
                 type="text"
                 value={image}
-                onChange={(e) => setImage(e.target.value)}
+                onChange={(e) => {
+                  setImage(e.target.value);
+                  setImageSizeKb(null);
+                }}
                 placeholder="https://..."
                 className="flex-1 px-3 py-1.5 rounded-lg bg-white border border-brass-300 text-xs"
               />
             </div>
+            {isCompressing && (
+              <p className="text-xs text-brass-700 animate-pulse font-medium">
+                ⏳ Compressing photo for permanent storage... (फोटो कंप्रेस हो रही है...)
+              </p>
+            )}
             {image && (
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2 flex items-center gap-3">
                 <span className="text-[11px] text-charcoal-muted">Preview:</span>
                 <img src={image} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-brass-400" />
+                {imageSizeKb !== null && (
+                  <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200">
+                    ✓ ~{imageSizeKb} KB • Compressed for permanent storage
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -538,10 +584,10 @@ const InstrumentsManager: React.FC<InstrumentsManagerProps> = ({
                       <input
                         type="number"
                         defaultValue={item.price}
-                        onBlur={(e) => {
-                          onUpdate(item.id, { price: Number(e.target.value) });
+                        onBlur={async (e) => {
+                          const res = await onUpdate(item.id, { price: Number(e.target.value) });
                           setEditingId(null);
-                          onNotify(language === 'hi' ? 'मूल्य अपडेट किया गया!' : 'Price updated!');
+                          onNotify(res.message);
                         }}
                         className="w-20 px-2 py-1 border border-brass-400 rounded text-xs font-bold"
                         autoFocus
@@ -560,9 +606,9 @@ const InstrumentsManager: React.FC<InstrumentsManagerProps> = ({
                   <td className="p-3">
                     <button
                       type="button"
-                      onClick={() => {
-                        onUpdate(item.id, { inStock: !item.inStock });
-                        onNotify(language === 'hi' ? 'स्टॉक स्थिति बदली गई!' : 'Stock status updated!');
+                      onClick={async () => {
+                        const res = await onUpdate(item.id, { inStock: !item.inStock });
+                        onNotify(res.message);
                       }}
                       className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
                         item.inStock 
@@ -577,11 +623,11 @@ const InstrumentsManager: React.FC<InstrumentsManagerProps> = ({
                   <td className="p-3 text-right">
                     <div className="flex items-center justify-end gap-1.5">
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           const newPrice = prompt("Enter new price in ₹:", item.price.toString());
                           if (newPrice !== null && !isNaN(Number(newPrice))) {
-                            onUpdate(item.id, { price: Number(newPrice) });
-                            onNotify("Price updated!");
+                            const res = await onUpdate(item.id, { price: Number(newPrice) });
+                            onNotify(res.message);
                           }
                         }}
                         className="p-1.5 rounded-lg text-brass-700 hover:bg-cream-200"
@@ -591,10 +637,10 @@ const InstrumentsManager: React.FC<InstrumentsManagerProps> = ({
                       </button>
 
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           if (confirm(`Delete "${item.name[language]}"?`)) {
-                            onDelete(item.id);
-                            onNotify(language === 'hi' ? 'वाद्य यंत्र हटाया गया!' : 'Instrument deleted!');
+                            const res = await onDelete(item.id);
+                            onNotify(res.message);
                           }
                         }}
                         className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50"
@@ -620,9 +666,9 @@ const InstrumentsManager: React.FC<InstrumentsManagerProps> = ({
    ==================================================================== */
 interface RepairsManagerProps {
   repairServices: RepairService[];
-  onAdd: (service: Omit<RepairService, 'id'>) => void;
-  onUpdate: (id: string, updated: Partial<RepairService>) => void;
-  onDelete: (id: string) => void;
+  onAdd: (service: Omit<RepairService, 'id'>) => Promise<SaveResult> | SaveResult;
+  onUpdate: (id: string, updated: Partial<RepairService>) => Promise<SaveResult> | SaveResult;
+  onDelete: (id: string) => Promise<SaveResult> | SaveResult;
   onNotify: (msg: string) => void;
 }
 
@@ -646,14 +692,14 @@ const RepairsManager: React.FC<RepairsManagerProps> = ({
   const [turnaroundEn, setTurnaroundEn] = useState('Same Day');
   const [turnaroundHi, setTurnaroundHi] = useState('उसी दिन');
 
-  const handleAddSubmit = (e: React.FormEvent) => {
+  const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nameEn.trim() && !nameHi.trim()) {
       alert("Please provide a service name.");
       return;
     }
 
-    onAdd({
+    const res = await onAdd({
       category,
       serviceName: {
         en: nameEn.trim() || nameHi.trim(),
@@ -670,12 +716,16 @@ const RepairsManager: React.FC<RepairsManagerProps> = ({
       }
     });
 
-    setNameEn('');
-    setNameHi('');
-    setDescEn('');
-    setDescHi('');
-    setShowAddForm(false);
-    onNotify(language === 'hi' ? 'मरम्मत सेवा जोड़ी गई!' : 'Repair service added!');
+    if (res.success) {
+      setNameEn('');
+      setNameHi('');
+      setDescEn('');
+      setDescHi('');
+      setShowAddForm(false);
+      onNotify(res.message);
+    } else {
+      alert(res.message);
+    }
   };
 
   const filteredServices = filterCategory === 'all'
@@ -855,11 +905,11 @@ const RepairsManager: React.FC<RepairsManagerProps> = ({
                     {formatCurrency(service.startingFee)}+
                   </span>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       const newFee = prompt("Enter new starting fee in ₹:", service.startingFee.toString());
                       if (newFee !== null && !isNaN(Number(newFee))) {
-                        onUpdate(service.id, { startingFee: Number(newFee) });
-                        onNotify("Repair fee updated!");
+                        const res = await onUpdate(service.id, { startingFee: Number(newFee) });
+                        onNotify(res.message);
                       }
                     }}
                     className="text-[10px] text-brass-700 underline"
@@ -881,10 +931,10 @@ const RepairsManager: React.FC<RepairsManagerProps> = ({
 
             <div className="mt-3 pt-2 border-t border-cream-200 flex items-center justify-end gap-2">
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (confirm(`Delete service "${service.serviceName[language]}"?`)) {
-                    onDelete(service.id);
-                    onNotify("Service deleted!");
+                    const res = await onDelete(service.id);
+                    onNotify(res.message);
                   }
                 }}
                 className="text-xs text-rose-600 hover:text-rose-800 flex items-center gap-1"
@@ -907,8 +957,8 @@ const RepairsManager: React.FC<RepairsManagerProps> = ({
 interface GenerationsManagerProps {
   generations: any[];
   generationImages: Record<number, string>;
-  onUpdateImage: (genId: number, base64OrUrl: string) => void;
-  onResetImage: (genId: number) => void;
+  onUpdateImage: (genId: number, base64OrUrl: string) => Promise<SaveResult> | SaveResult;
+  onResetImage: (genId: number) => Promise<SaveResult> | SaveResult;
   onNotify: (msg: string) => void;
 }
 
@@ -943,9 +993,16 @@ const GenerationsManager: React.FC<GenerationsManagerProps> = ({
           const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
             const file = e.target.files?.[0];
             if (file) {
-              const base64 = await fileToBase64(file);
-              onUpdateImage(gen.id, base64);
-              onNotify(language === 'hi' ? `पीढ़ी ${gen.id} का चित्र अपडेट हुआ!` : `Portrait for Gen ${gen.id} updated!`);
+              try {
+                const compressed = await compressAndConvertImage(file, 600, 0.7);
+                const res = await onUpdateImage(gen.id, compressed);
+                onNotify(res.message);
+              } catch (err) {
+                console.error("Portrait compression failed, using fallback:", err);
+                const raw = await fileToBase64(file);
+                const res = await onUpdateImage(gen.id, raw);
+                onNotify(res.message);
+              }
             }
           };
 
@@ -1008,9 +1065,9 @@ const GenerationsManager: React.FC<GenerationsManagerProps> = ({
 
                     {isOverridden && (
                       <button
-                        onClick={() => {
-                          onResetImage(gen.id);
-                          onNotify(language === 'hi' ? 'डिफ़ॉल्ट चित्र बहाल किया गया।' : 'Reset to default portrait.');
+                        onClick={async () => {
+                          const res = await onResetImage(gen.id);
+                          onNotify(res.message);
                         }}
                         type="button"
                         className="text-xs text-rose-600 hover:underline block"
@@ -1039,10 +1096,12 @@ const GenerationsManager: React.FC<GenerationsManagerProps> = ({
    ==================================================================== */
 interface SettingsManagerProps {
   onExport: () => string;
-  onImport: (json: string) => { success: boolean; message: string };
-  onUpdatePin: (curr: string, next: string) => { success: boolean; message: string };
-  onResetAll: () => void;
+  onImport: (json: string) => Promise<SaveResult> | SaveResult;
+  onUpdatePin: (curr: string, next: string) => Promise<SaveResult> | SaveResult;
+  onResetAll: () => Promise<void> | void;
   onNotify: (msg: string) => void;
+  cloudStatus: 'connected' | 'offline' | 'syncing';
+  onSyncWithCloud: () => Promise<void>;
 }
 
 const SettingsManager: React.FC<SettingsManagerProps> = ({
@@ -1050,7 +1109,9 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
   onImport,
   onUpdatePin,
   onResetAll,
-  onNotify
+  onNotify,
+  cloudStatus,
+  onSyncWithCloud
 }) => {
   const { language } = useLanguage();
   const [currentPin, setCurrentPin] = useState('');
@@ -1073,9 +1134,9 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         const text = event.target?.result as string;
-        const res = onImport(text);
+        const res = await onImport(text);
         if (res.success) {
           onNotify(res.message);
         } else {
@@ -1086,14 +1147,14 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
     }
   };
 
-  const handlePinSubmit = (e: React.FormEvent) => {
+  const handlePinSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = onUpdatePin(currentPin, newPin);
+    const res = await onUpdatePin(currentPin, newPin);
     if (res.success) {
       setPinMsg({ text: res.message, isError: false });
       setCurrentPin('');
       setNewPin('');
-      onNotify("Security PIN updated!");
+      onNotify(res.message);
     } else {
       setPinMsg({ text: res.message, isError: true });
     }
@@ -1102,6 +1163,81 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
   return (
     <div className="space-y-8 max-w-3xl">
       
+      {/* Supabase Cloud Connection & SQL Setup Card */}
+      <div className="bg-white rounded-2xl border-2 border-brass-400 p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rosewood-900 text-brass-300 flex items-center justify-center font-bold text-lg">
+              ☁️
+            </div>
+            <div>
+              <h4 className="font-serif text-base font-bold text-rosewood-950 flex items-center gap-2">
+                <span>{language === 'hi' ? 'सुपाबेस क्लाउड डेटाबेस स्थिति' : 'Supabase Cloud Database Status'}</span>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                  cloudStatus === 'connected' 
+                    ? 'bg-emerald-100 text-emerald-800' 
+                    : cloudStatus === 'syncing'
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-zinc-100 text-zinc-800'
+                }`}>
+                  {cloudStatus === 'connected' ? '● Connected & Synced' : cloudStatus === 'syncing' ? 'Syncing...' : 'Pending Table Creation'}
+                </span>
+              </h4>
+              <p className="text-xs text-charcoal-muted">
+                {language === 'hi'
+                  ? 'यह वेबसाइट सुपाबेस क्लाउड डेटाबेस से जुड़ी है जिससे सभी ग्राहकों को मोबाइल/कंप्यूटर पर तुरंत लाइव स्टॉक व दरें दिखेंगी।'
+                  : 'Connected to Supabase PostgreSQL cloud so stock and prices update across every customer device in real time.'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={async () => {
+              await onSyncWithCloud();
+              onNotify("Checked Cloud Database!");
+            }}
+            className="px-3.5 py-2 rounded-xl bg-cream-200 hover:bg-cream-300 text-rosewood-900 text-xs font-bold border border-brass-300 transition-colors"
+          >
+            {language === 'hi' ? 'क्लाउड रिफ्रेश करें' : 'Refresh Cloud Sync'}
+          </button>
+        </div>
+
+        <div className="p-4 rounded-xl bg-rosewood-950 text-cream-100 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-brass-300 uppercase tracking-wider">
+              Supabase SQL Editor Query:
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                const sql = `create table if not exists shop_data (\n  id text primary key,\n  data jsonb not null,\n  updated_at timestamptz default now()\n);\nalter table shop_data enable row level security;\ndrop policy if exists "Allow all access" on shop_data;\ncreate policy "Allow all access" on shop_data for all using (true) with check (true);`;
+                navigator.clipboard.writeText(sql);
+                onNotify(language === 'hi' ? 'SQL कॉपी हो गई!' : 'SQL Query Copied to Clipboard!');
+              }}
+              className="px-2.5 py-1 rounded bg-brass-600 hover:bg-brass-500 text-rosewood-950 text-xs font-bold transition-all"
+            >
+              Copy 4-Line SQL
+            </button>
+          </div>
+          <pre className="text-[11px] font-mono bg-black/40 p-3 rounded-lg overflow-x-auto text-emerald-300 leading-relaxed select-all">
+{`create table if not exists shop_data (
+  id text primary key,
+  data jsonb not null,
+  updated_at timestamptz default now()
+);
+alter table shop_data enable row level security;
+drop policy if exists "Allow all access" on shop_data;
+create policy "Allow all access" on shop_data for all using (true) with check (true);`}
+          </pre>
+          <p className="text-[11px] text-brass-400">
+            {language === 'hi'
+              ? 'सुपाबेस डैशबोर्ड में SQL Editor खोलें, यह 4 लाइन पेस्ट करके Run दबाएं। इसके बाद सभी बदलाव हमेशा क्लाउड में सुरक्षित रहेंगे।'
+              : 'Paste this 4-line SQL in Supabase SQL Editor and click RUN to enable cloud multi-device sync.'}
+          </p>
+        </div>
+      </div>
+
       <div className="bg-white rounded-2xl border border-brass-300 p-6 shadow-sm space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-brass-100 text-brass-700 flex items-center justify-center">
@@ -1217,9 +1353,9 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
             : 'Warning: This will clear custom localStorage changes and restore original factory sample data and default PIN (232329).'}
         </p>
         <button
-          onClick={() => {
+          onClick={async () => {
             if (confirm("Are you sure you want to reset everything back to factory defaults?")) {
-              onResetAll();
+              await onResetAll();
               onNotify("Reset to defaults complete!");
             }
           }}

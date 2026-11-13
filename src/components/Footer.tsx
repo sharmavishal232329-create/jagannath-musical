@@ -110,16 +110,26 @@ export const Footer: React.FC<FooterProps> = ({ onOpenOwnerPortal }) => {
             </div>
 
             {/* Furniture Line */}
-            <div className="p-3 rounded-xl bg-rosewood-900/60 border border-rosewood-800 text-xs space-y-1">
+            <div className="p-3 rounded-xl bg-rosewood-900/60 border border-rosewood-800 text-xs space-y-1.5">
               <span className="text-[10px] text-brass-400 font-bold uppercase block">
                 {language === 'hi' ? 'काष्ठ कला व फर्नीचर निर्माण' : 'Furniture & Bespoke Woodcraft'}
               </span>
-              <div className="font-serif font-bold text-white">
-                {BUSINESS_CONFIG.furnitureDivision.sanchalakShort[language]}
+              <div className="font-serif font-bold text-white text-xs sm:text-sm">
+                {BUSINESS_CONFIG.furnitureDivision.proprietor1.name[language]} • {BUSINESS_CONFIG.furnitureDivision.proprietor2.name[language]}
               </div>
-              <div className="text-cream-300 flex items-center gap-1.5 pt-0.5">
-                <Phone className="w-3 h-3 text-brass-500" />
-                <span>+91 88400 57772</span>
+              <div className="text-cream-300 flex flex-col gap-1 pt-0.5 text-[11px]">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-brass-400 font-medium">Sanjay Sharma (WA):</span>
+                  <a href={`https://wa.me/${BUSINESS_CONFIG.furnitureDivision.proprietor1.whatsAppRaw}`} target="_blank" rel="noreferrer" className="hover:text-brass-300">
+                    {BUSINESS_CONFIG.furnitureDivision.proprietor1.whatsApp}
+                  </a>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-brass-400 font-medium">Saheb Sharma (Call & WA):</span>
+                  <a href={`tel:${BUSINESS_CONFIG.furnitureDivision.proprietor2.phoneRaw}`} className="hover:text-brass-300">
+                    {BUSINESS_CONFIG.furnitureDivision.proprietor2.phone}
+                  </a>
+                </div>
               </div>
             </div>
 

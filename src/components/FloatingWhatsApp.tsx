@@ -19,11 +19,19 @@ export const FloatingWhatsApp: React.FC = () => {
     setIsOpen(false);
   };
 
-  const handleFurnitureWhatsApp = () => {
+  const handleSanjayWhatsApp = () => {
     const msg = language === 'hi'
-      ? "नमस्ते संजय जी, मुझे 'जगन्नाथ फर्नीचर' से लकड़ी के काम/फर्नीचर के संबंध में जानकारी चाहिए।"
-      : "Hello Sanjay Ji, I would like to inquire about furniture and woodwork.";
-    window.open(createWhatsAppUrl(furniture.whatsApp, msg), '_blank');
+      ? "नमस्ते संजय जी, मैं 'जगन्नाथ फर्नीचर विभाग' से लकड़ी के काम/फर्नीचर के संबंध में जानकारी चाहता हूँ।"
+      : "Hello Sanjay Ji, I would like to inquire about custom furniture and woodwork.";
+    window.open(createWhatsAppUrl(furniture.proprietor1.whatsAppRaw, msg), '_blank');
+    setIsOpen(false);
+  };
+
+  const handleSahebWhatsApp = () => {
+    const msg = language === 'hi'
+      ? "नमस्ते साहेब जी, मैं 'जगन्नाथ फर्नीचर विभाग' से लकड़ी के काम/फर्नीचर के संबंध में जानकारी चाहता हूँ।"
+      : "Hello Saheb Ji, I would like to inquire about custom furniture and woodwork.";
+    window.open(createWhatsAppUrl(furniture.proprietor2.whatsAppRaw, msg), '_blank');
     setIsOpen(false);
   };
 
@@ -32,7 +40,7 @@ export const FloatingWhatsApp: React.FC = () => {
       
       {/* Expanded Quick Options Menu */}
       {isOpen && (
-        <div className="mb-3 w-72 bg-white rounded-2xl shadow-royal-lg border-2 border-brass-400 p-4 space-y-3 animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="mb-3 w-80 bg-white rounded-2xl shadow-royal-lg border-2 border-brass-400 p-4 space-y-3 animate-in fade-in slide-in-from-bottom-3 duration-200">
           <div className="flex items-center justify-between border-b border-cream-200 pb-2">
             <div>
               <h4 className="font-serif text-sm font-bold text-rosewood-950">
@@ -70,9 +78,9 @@ export const FloatingWhatsApp: React.FC = () => {
             <MessageCircle className="w-4 h-4 text-emerald-600 fill-emerald-600" />
           </button>
 
-          {/* Option 2: Furniture Wing (Sanjay Ji) */}
+          {/* Option 2: Furniture Wing - Sanjay Ji */}
           <button
-            onClick={handleFurnitureWhatsApp}
+            onClick={handleSanjayWhatsApp}
             type="button"
             className="w-full text-left p-2.5 rounded-xl bg-cream-100 hover:bg-emerald-50 border border-brass-200 hover:border-emerald-400 transition-all flex items-center gap-3 group"
           >
@@ -81,10 +89,30 @@ export const FloatingWhatsApp: React.FC = () => {
             </div>
             <div className="flex-1 min-w-0">
               <span className="text-xs font-bold text-rosewood-950 block truncate">
-                {language === 'hi' ? 'फर्नीचर एवं काष्ठ कला' : 'Furniture & Woodwork'}
+                {language === 'hi' ? 'फर्नीचर: श्री संजय शर्मा' : 'Furniture: Shree Sanjay Sharma'}
               </span>
               <span className="text-[10px] text-charcoal-muted block truncate">
-                {furniture.sanchalakShort[language]}
+                WhatsApp: {furniture.proprietor1.whatsApp}
+              </span>
+            </div>
+            <MessageCircle className="w-4 h-4 text-emerald-600 fill-emerald-600" />
+          </button>
+
+          {/* Option 3: Furniture Wing - Saheb Ji */}
+          <button
+            onClick={handleSahebWhatsApp}
+            type="button"
+            className="w-full text-left p-2.5 rounded-xl bg-cream-100 hover:bg-emerald-50 border border-brass-200 hover:border-emerald-400 transition-all flex items-center gap-3 group"
+          >
+            <div className="w-9 h-9 rounded-lg bg-rosewood-900 text-brass-300 flex items-center justify-center flex-shrink-0 group-hover:bg-emerald-700 transition-colors">
+              <Armchair className="w-4 h-4" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-bold text-rosewood-950 block truncate">
+                {language === 'hi' ? 'फर्नीचर: श्री साहेब शर्मा' : 'Furniture: Shree Saheb Sharma'}
+              </span>
+              <span className="text-[10px] text-charcoal-muted block truncate">
+                Call & WA: {furniture.proprietor2.phone}
               </span>
             </div>
             <MessageCircle className="w-4 h-4 text-emerald-600 fill-emerald-600" />
